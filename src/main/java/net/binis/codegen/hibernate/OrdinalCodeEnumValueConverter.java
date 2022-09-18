@@ -1,9 +1,3 @@
-/*
- * Hibernate, Relational Persistence for Idiomatic Java
- *
- * License: GNU Lesser General Public License (LGPL), version 2.1 or later
- * See the lgpl.txt file in the root directory or http://www.gnu.org/licenses/lgpl-2.1.html
- */
 package net.binis.codegen.hibernate;
 
 /*-
@@ -26,8 +20,6 @@ package net.binis.codegen.hibernate;
  * #L%
  */
 
-import net.binis.codegen.hibernate.CodeEnumJavaTypeDescriptor;
-import net.binis.codegen.hibernate.CodeEnumValueConverter;
 import net.binis.codegen.objects.base.enumeration.CodeEnum;
 import org.hibernate.engine.spi.SharedSessionContractImplementor;
 import org.hibernate.type.descriptor.ValueBinder;
@@ -42,12 +34,6 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Types;
 
-/**
- * BasicValueConverter handling the conversion of an enum based on
- * JPA {@link javax.persistence.EnumType#ORDINAL} strategy (storing the ordinal)
- *
- * @author Steve Ebersole
- */
 public class OrdinalCodeEnumValueConverter<E extends CodeEnum> implements CodeEnumValueConverter<E,Integer>, Serializable {
 
 	private final CodeEnumJavaTypeDescriptor<E> enumJavaDescriptor;

@@ -98,8 +98,11 @@
 
                     <configuration>
                         <verbose>false</verbose>
+                        <excludes>
+                            <exclude>**/resources/**</exclude>
+                        </excludes>
                         <includes>
-                            <includes>**/*.java</includes>
+                            <include>**/*.java</include>
                         </includes>
                     </configuration>
 
