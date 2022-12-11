@@ -7,7 +7,7 @@ import javax.annotation.processing.Generated;
 @Generated(value = "TestPrototype", comments = "Test")
 public class TestImpl implements Test {
 
-    @Type(type = "net.binis.codegen.hibernate.CodeEnumType")
+    @Type(net.binis.codegen.hibernate.CodeEnumType.class)
     protected TestEnum enumWithPrototype;
 
     protected TestEnum enumWithoutPrototype;

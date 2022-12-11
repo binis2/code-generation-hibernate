@@ -1,3 +1,9 @@
+/*
+ * Hibernate, Relational Persistence for Idiomatic Java
+ *
+ * License: GNU Lesser General Public License (LGPL), version 2.1 or later.
+ * See the lgpl.txt file in the root directory or <http://www.gnu.org/licenses/lgpl-2.1.html>.
+ */
 package net.binis.codegen.hibernate;
 
 /*-
@@ -20,23 +26,30 @@ package net.binis.codegen.hibernate;
  * #L%
  */
 
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.MapKeyEnumerated;
 import lombok.extern.slf4j.Slf4j;
 import net.binis.codegen.objects.base.enumeration.CodeEnum;
 import org.hibernate.AssertionFailure;
 import org.hibernate.HibernateException;
+import org.hibernate.annotations.Nationalized;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.engine.spi.SharedSessionContractImplementor;
 import org.hibernate.internal.util.ReflectHelper;
 import org.hibernate.internal.util.config.ConfigurationHelper;
 import org.hibernate.metamodel.model.convert.internal.OrdinalEnumValueConverter;
+import org.hibernate.metamodel.model.convert.spi.BasicValueConverter;
+import org.hibernate.type.descriptor.ValueBinder;
+import org.hibernate.type.descriptor.ValueExtractor;
+import org.hibernate.type.descriptor.java.BasicJavaType;
+import org.hibernate.type.descriptor.jdbc.JdbcType;
+import org.hibernate.type.descriptor.jdbc.JdbcTypeIndicators;
 import org.hibernate.type.spi.TypeConfiguration;
 import org.hibernate.type.spi.TypeConfigurationAware;
 import org.hibernate.usertype.DynamicParameterizedType;
 import org.hibernate.usertype.EnhancedUserType;
 import org.hibernate.usertype.LoggableUserType;
 
-import javax.persistence.Enumerated;
-import javax.persistence.MapKeyEnumerated;
 import java.io.Serializable;
 import java.lang.annotation.Annotation;
 import java.sql.PreparedStatement;
@@ -48,8 +61,9 @@ import java.util.Properties;
 
 @Slf4j
 @SuppressWarnings("unchecked")
-public class CodeEnumType<T extends CodeEnum>
-        implements EnhancedUserType, DynamicParameterizedType, LoggableUserType, TypeConfigurationAware, Serializable {
+public class CodeEnumType
+        implements EnhancedUserType<CodeEnum>, DynamicParameterizedType, LoggableUserType, TypeConfigurationAware, Serializable {
+
     public static final String ENUM = "enumClass";
     public static final String NAMED = "useNamed";
     public static final String TYPE = "type";
@@ -57,42 +71,107 @@ public class CodeEnumType<T extends CodeEnum>
     private Class enumClass;
 
     private CodeEnumValueConverter enumValueConverter;
+    private JdbcType jdbcType;
+    private ValueExtractor<Object> jdbcValueExtractor;
+    private ValueBinder<Object> jdbcValueBinder;
 
     private TypeConfiguration typeConfiguration;
 
+    public CodeEnumType() {
+    }
+
+    public CodeEnumType(
+            Class<CodeEnum> enumClass,
+            CodeEnumValueConverter enumValueConverter,
+            TypeConfiguration typeConfiguration) {
+        this.enumClass = enumClass;
+        this.typeConfiguration = typeConfiguration;
+
+        this.enumValueConverter = enumValueConverter;
+        this.jdbcType = typeConfiguration.getJdbcTypeRegistry().getDescriptor(enumValueConverter.getJdbcTypeCode());
+        this.jdbcValueExtractor = jdbcType.getExtractor(enumValueConverter.getRelationalJavaType());
+        this.jdbcValueBinder = jdbcType.getBinder(enumValueConverter.getRelationalJavaType());
+    }
+
+    public CodeEnumValueConverter getEnumValueConverter() {
+        return enumValueConverter;
+    }
+
+    @Override
+    public JdbcType getJdbcType(TypeConfiguration typeConfiguration) {
+        return jdbcType;
+    }
+
+    @Override
+    public BasicValueConverter<CodeEnum, Object> getValueConverter() {
+        return enumValueConverter;
+    }
+
     @Override
     public void setParameterValues(Properties parameters) {
-        final ParameterType reader = (ParameterType) parameters.get(DynamicParameterizedType.PARAMETER_TYPE);
+        // IMPL NOTE: we handle 2 distinct cases here:
+        // 		1) we are passed a ParameterType instance in the incoming Properties - generally
+        //			speaking this indicates the annotation-binding case, and the passed ParameterType
+        //			represents information about the attribute and annotation
+        //		2) we are not passed a ParameterType - generally this indicates a hbm.xml binding case.
+        final ParameterType reader = (ParameterType) parameters.get(PARAMETER_TYPE);
 
+        // the `reader != null` block handles annotations, while the `else` block
+        // handles hbm.xml
         if (reader != null) {
             enumClass = reader.getReturnedClass().asSubclass(CodeEnum.class);
 
+            final Long columnLength = reader.getColumnLengths()[0];
+
             final boolean isOrdinal;
-            final javax.persistence.EnumType enumType = getEnumType(reader);
+            final jakarta.persistence.EnumType enumType = getEnumType(reader);
             if (enumType == null) {
                 isOrdinal = true;
-            } else if (javax.persistence.EnumType.ORDINAL.equals(enumType)) {
+            } else if (jakarta.persistence.EnumType.ORDINAL.equals(enumType)) {
                 isOrdinal = true;
-            } else if (javax.persistence.EnumType.STRING.equals(enumType)) {
+            } else if (jakarta.persistence.EnumType.STRING.equals(enumType)) {
                 isOrdinal = false;
             } else {
                 throw new AssertionFailure("Unknown EnumType: " + enumType);
             }
 
-            var descriptor = typeConfiguration
-                    .getJavaTypeDescriptorRegistry()
+            var type = typeConfiguration
+                    .getJavaTypeRegistry()
                     .getDescriptor(enumClass);
 
-            if (!(descriptor instanceof CodeEnumJavaTypeDescriptor)) {
-                descriptor = new CodeEnumJavaTypeDescriptor(enumClass);
+            if (!(type instanceof CodeEnumJavaType)) {
+                typeConfiguration.getJavaTypeRegistry().addDescriptor(new CodeEnumJavaType(enumClass));
             }
 
-            final CodeEnumJavaTypeDescriptor enumJavaDescriptor = (CodeEnumJavaTypeDescriptor) descriptor;
+            final CodeEnumJavaType enumJavaType = (CodeEnumJavaType) typeConfiguration
+                    .getJavaTypeRegistry()
+                    .getDescriptor(enumClass);
+
+            final LocalJdbcTypeIndicators indicators = new LocalJdbcTypeIndicators(
+                    enumType,
+                    columnLength,
+                    reader
+            );
+
+            final BasicJavaType<?> relationalJavaType = resolveRelationalJavaType(
+                    indicators,
+                    enumJavaType
+            );
+
+            this.jdbcType = relationalJavaType.getRecommendedJdbcType(indicators);
 
             if (isOrdinal) {
-                this.enumValueConverter = new OrdinalCodeEnumValueConverter(enumJavaDescriptor);
+                this.enumValueConverter = new OrdinalCodeEnumValueConverter(
+                        enumJavaType,
+                        jdbcType,
+                        relationalJavaType
+                );
             } else {
-                this.enumValueConverter = new NamedCodeEnumValueConverter(enumJavaDescriptor);
+                this.enumValueConverter = new NamedCodeEnumValueConverter(
+                        enumJavaType,
+                        jdbcType,
+                        relationalJavaType
+                );
             }
         } else {
             final String enumClassName = (String) parameters.get(ENUM);
@@ -103,29 +182,46 @@ public class CodeEnumType<T extends CodeEnum>
             }
 
             this.enumValueConverter = interpretParameters(parameters);
+            this.jdbcType = typeConfiguration.getJdbcTypeRegistry().getDescriptor(enumValueConverter.getJdbcTypeCode());
         }
+        this.jdbcValueExtractor = jdbcType.getExtractor(enumValueConverter.getRelationalJavaType());
+        this.jdbcValueBinder = jdbcType.getBinder(enumValueConverter.getRelationalJavaType());
 
         log.debug(
-                "Using {}-based conversion for CodeEnum {}",
+                "Using {}-based conversion for Enum {}",
                 isOrdinal() ? "ORDINAL" : "NAMED",
                 enumClass.getName()
         );
     }
 
-    private javax.persistence.EnumType getEnumType(ParameterType reader) {
-        javax.persistence.EnumType enumType = null;
+    private BasicJavaType<?> resolveRelationalJavaType(
+            LocalJdbcTypeIndicators indicators,
+            CodeEnumJavaType<?> enumJavaType) {
+        return enumJavaType.getRecommendedJdbcType(indicators).getJdbcRecommendedJavaTypeMapping(
+                null,
+                null,
+                typeConfiguration
+        );
+    }
+
+    private jakarta.persistence.EnumType getEnumType(ParameterType reader) {
+        if (reader == null) {
+            return null;
+        }
+
         if (reader.isPrimaryKey()) {
-            MapKeyEnumerated enumAnn = getAnnotation(reader.getAnnotationsMethod(), MapKeyEnumerated.class);
+            final MapKeyEnumerated enumAnn = getAnnotation(reader.getAnnotationsMethod(), MapKeyEnumerated.class);
             if (enumAnn != null) {
-                enumType = enumAnn.value();
-            }
-        } else {
-            Enumerated enumAnn = getAnnotation(reader.getAnnotationsMethod(), Enumerated.class);
-            if (enumAnn != null) {
-                enumType = enumAnn.value();
+                return enumAnn.value();
             }
         }
-        return enumType;
+
+        final Enumerated enumAnn = getAnnotation(reader.getAnnotationsMethod(), Enumerated.class);
+        if (enumAnn != null) {
+            return enumAnn.value();
+        }
+
+        return null;
     }
 
     private <A extends Annotation> A getAnnotation(Annotation[] annotations, Class<A> anClass) {
@@ -138,24 +234,63 @@ public class CodeEnumType<T extends CodeEnum>
     }
 
     private CodeEnumValueConverter interpretParameters(Properties parameters) {
-        final CodeEnumJavaTypeDescriptor javaTypeDescriptor = (CodeEnumJavaTypeDescriptor) typeConfiguration
-                .getJavaTypeDescriptorRegistry()
+        //noinspection rawtypes
+        var enumJavaType = (CodeEnumJavaType) typeConfiguration
+                .getJavaTypeRegistry()
                 .getDescriptor(enumClass);
+
+        // this method should only be called for hbm.xml handling
+        assert parameters.get(PARAMETER_TYPE) == null;
+
+        final LocalJdbcTypeIndicators localIndicators = new LocalJdbcTypeIndicators(
+                // use ORDINAL as default for hbm.xml mappings
+                jakarta.persistence.EnumType.ORDINAL,
+                // Is there a reasonable value here?  Limits the
+                // number of enums that can be stored:
+                // 	1 = 10
+                //	2 = 100
+                //  etc
+                -1L,
+                null
+        );
+        final BasicJavaType<?> stringJavaType = (BasicJavaType<?>) typeConfiguration.getJavaTypeRegistry().getDescriptor(String.class);
+        final BasicJavaType<?> integerJavaType = (BasicJavaType<?>) typeConfiguration.getJavaTypeRegistry().getDescriptor(Integer.class);
+
         if (parameters.containsKey(NAMED)) {
             final boolean useNamed = ConfigurationHelper.getBoolean(NAMED, parameters);
             if (useNamed) {
-                return new NamedCodeEnumValueConverter(javaTypeDescriptor);
+                //noinspection rawtypes
+                return new NamedCodeEnumValueConverter(
+                        enumJavaType,
+                        stringJavaType.getRecommendedJdbcType(localIndicators),
+                        stringJavaType
+                );
             } else {
-                return new OrdinalCodeEnumValueConverter(javaTypeDescriptor);
+                //noinspection rawtypes
+                return new OrdinalCodeEnumValueConverter(
+                        enumJavaType,
+                        integerJavaType.getRecommendedJdbcType(localIndicators),
+                        typeConfiguration.getJavaTypeRegistry().getDescriptor(Integer.class)
+                );
             }
         }
 
         if (parameters.containsKey(TYPE)) {
             final int type = Integer.decode((String) parameters.get(TYPE));
             if (isNumericType(type)) {
-                return new OrdinalCodeEnumValueConverter(javaTypeDescriptor);
+                //noinspection rawtypes
+                return new OrdinalCodeEnumValueConverter(
+                        enumJavaType,
+                        integerJavaType.getRecommendedJdbcType(localIndicators),
+                        typeConfiguration.getJavaTypeRegistry().getDescriptor(Integer.class)
+                );
             } else if (isCharacterType(type)) {
-                return new NamedCodeEnumValueConverter(javaTypeDescriptor);
+                //noinspection rawtypes
+                return new NamedCodeEnumValueConverter(
+                        enumJavaType,
+                        stringJavaType.getRecommendedJdbcType(localIndicators),
+                        stringJavaType
+                );
             } else {
                 throw new HibernateException(
                         String.format(
@@ -168,17 +303,21 @@ public class CodeEnumType<T extends CodeEnum>
         }
 
         // the fallback
-        return new OrdinalCodeEnumValueConverter(javaTypeDescriptor);
+        return new OrdinalCodeEnumValueConverter(
+                enumJavaType,
+                integerJavaType.getRecommendedJdbcType(localIndicators),
+                typeConfiguration.getJavaTypeRegistry().getDescriptor(Integer.class)
+        );
     }
 
     private boolean isCharacterType(int jdbcTypeCode) {
         switch (jdbcTypeCode) {
-            case Types.CHAR:
-            case Types.LONGVARCHAR:
-            case Types.VARCHAR: {
+            case Types.CHAR,
+                    Types.LONGVARCHAR,
+                    Types.VARCHAR -> {
                 return true;
             }
-            default: {
+            default -> {
                 return false;
             }
         }
@@ -186,62 +325,64 @@ public class CodeEnumType<T extends CodeEnum>
 
     private boolean isNumericType(int jdbcTypeCode) {
         switch (jdbcTypeCode) {
-            case Types.INTEGER:
-            case Types.NUMERIC:
-            case Types.SMALLINT:
-            case Types.TINYINT:
-            case Types.BIGINT:
-            case Types.DECIMAL:
-            case Types.DOUBLE:
-            case Types.FLOAT: {
+            case Types.INTEGER,
+                    Types.NUMERIC,
+                    Types.SMALLINT,
+                    Types.TINYINT,
+                    Types.BIGINT,
+                    Types.DECIMAL,
+                    Types.DOUBLE,
+                    Types.FLOAT -> {
                 return true;
             }
-            default:
+            default -> {
                 return false;
+            }
         }
     }
 
     @Override
-    public int[] sqlTypes() {
+    public int getSqlType() {
         verifyConfigured();
-        return new int[]{enumValueConverter.getJdbcTypeCode()};
+        return enumValueConverter.getJdbcTypeCode();
     }
 
     @Override
-    public Class<? extends CodeEnum> returnedClass() {
+    public Class<CodeEnum> returnedClass() {
         return enumClass;
     }
 
     @Override
-    public boolean equals(Object x, Object y) throws HibernateException {
+    public boolean equals(CodeEnum x, CodeEnum y) throws HibernateException {
         return x == y;
     }
 
     @Override
-    public int hashCode(Object x) throws HibernateException {
+    public int hashCode(CodeEnum x) throws HibernateException {
         return x == null ? 0 : x.hashCode();
     }
 
     @Override
-    public Object nullSafeGet(ResultSet rs, String[] names, SharedSessionContractImplementor session, Object owner) throws SQLException {
+    public CodeEnum nullSafeGet(ResultSet rs, int position, SharedSessionContractImplementor session, Object owner) throws SQLException {
         verifyConfigured();
-        return enumValueConverter.readValue(rs, names[0], session);
+        final Object relational = jdbcValueExtractor.extract(rs, position, session);
+        return (CodeEnum) enumValueConverter.toDomainValue(relational);
     }
 
     private void verifyConfigured() {
-        if (enumValueConverter == null) {
+        if (enumValueConverter == null || jdbcValueBinder == null || jdbcValueExtractor == null) {
             throw new AssertionFailure("EnumType (" + enumClass.getName() + ") not properly, fully configured");
         }
     }
 
     @Override
-    public void nullSafeSet(PreparedStatement st, Object value, int index, SharedSessionContractImplementor session) throws HibernateException, SQLException {
+    public void nullSafeSet(PreparedStatement st, CodeEnum value, int index, SharedSessionContractImplementor session) throws HibernateException, SQLException {
         verifyConfigured();
-        enumValueConverter.writeValue(st, (CodeEnum) value, index, session);
+        jdbcValueBinder.bind(st, enumValueConverter.toRelationalValue(value), index, session);
     }
 
     @Override
-    public Object deepCopy(Object value) throws HibernateException {
+    public CodeEnum deepCopy(CodeEnum value) throws HibernateException {
         return value;
     }
 
@@ -251,17 +392,17 @@ public class CodeEnumType<T extends CodeEnum>
     }
 
     @Override
-    public Serializable disassemble(Object value) throws HibernateException {
-        return (Serializable) value;
+    public Serializable disassemble(CodeEnum value) throws HibernateException {
+        return (Serializable) enumValueConverter.toRelationalValue(value);
     }
 
     @Override
-    public Object assemble(Serializable cached, Object owner) throws HibernateException {
-        return cached;
+    public CodeEnum assemble(Serializable cached, Object owner) throws HibernateException {
+        return (CodeEnum) enumValueConverter.toDomainValue(cached);
     }
 
     @Override
-    public Object replace(Object original, Object target, Object owner) throws HibernateException {
+    public CodeEnum replace(CodeEnum original, CodeEnum target, Object owner) throws HibernateException {
         return original;
     }
 
@@ -276,32 +417,82 @@ public class CodeEnumType<T extends CodeEnum>
     }
 
     @Override
-    public String objectToSQLString(Object value) {
+    public String toSqlLiteral(CodeEnum value) {
         verifyConfigured();
         return enumValueConverter.toSqlLiteral(value);
     }
 
     @Override
-    public String toXMLString(Object value) {
+    public String toString(CodeEnum value) {
         verifyConfigured();
-        return (String) enumValueConverter.getJavaDescriptor().unwrap((CodeEnum) value, String.class, null);
+        return enumValueConverter.getRelationalJavaType().toString(enumValueConverter.toRelationalValue(value));
     }
 
     @Override
-    @SuppressWarnings("RedundantCast")
-    public Object fromXMLString(String xmlValue) {
+    public CodeEnum fromStringValue(CharSequence sequence) {
         verifyConfigured();
-        return (T) enumValueConverter.getJavaDescriptor().wrap(xmlValue, null);
+        return (CodeEnum) enumValueConverter.toDomainValue(enumValueConverter.getRelationalJavaType().fromString(sequence));
     }
 
     @Override
     public String toLoggableString(Object value, SessionFactoryImplementor factory) {
         verifyConfigured();
-        return enumValueConverter.getJavaDescriptor().toString((CodeEnum) value);
+        return enumValueConverter.getDomainJavaType().toString((CodeEnum) value);
     }
 
     public boolean isOrdinal() {
         verifyConfigured();
         return enumValueConverter instanceof OrdinalEnumValueConverter;
+    }
+
+    private class LocalJdbcTypeIndicators implements JdbcTypeIndicators {
+        private final jakarta.persistence.EnumType enumType;
+        private final Long columnLength;
+        private final ParameterType reader;
+
+        public LocalJdbcTypeIndicators(jakarta.persistence.EnumType enumType, Long columnLength, ParameterType reader) {
+            this.enumType = enumType;
+            this.columnLength = columnLength;
+            this.reader = reader;
+        }
+
+        @Override
+        public TypeConfiguration getTypeConfiguration() {
+            return typeConfiguration;
+        }
+
+        @Override
+        public jakarta.persistence.EnumType getEnumeratedType() {
+            if (enumType != null) {
+                return enumType;
+            }
+            return typeConfiguration.getCurrentBaseSqlTypeIndicators().getEnumeratedType();
+        }
+
+        @Override
+        public boolean isNationalized() {
+            return isNationalized(reader);
+        }
+
+        private boolean isNationalized(ParameterType reader) {
+            if (typeConfiguration.getCurrentBaseSqlTypeIndicators().isNationalized()) {
+                return true;
+            }
+
+            if (reader != null) {
+                for (Annotation annotation : reader.getAnnotationsMethod()) {
+                    if (annotation instanceof Nationalized) {
+                        return true;
+                    }
+                }
+            }
+
+            return false;
+        }
+
+        @Override
+        public long getColumnLength() {
+            return columnLength == null ? NO_COLUMN_LENGTH : columnLength;
+        }
     }
 }

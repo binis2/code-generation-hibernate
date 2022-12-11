@@ -28,12 +28,39 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
+
+import org.hibernate.Remove;
+import org.hibernate.engine.spi.SharedSessionContractImplementor;
+import org.hibernate.sql.ast.tree.select.SelectStatement;
+import org.hibernate.sql.exec.spi.JdbcOperation;
+import org.hibernate.type.descriptor.java.EnumJavaType;
+
+/**
+ * BasicValueConverter extension for enum-specific support
+ *
+ * @author Steve Ebersole
+ */
 public interface CodeEnumValueConverter<O extends CodeEnum, R> extends BasicValueConverter<O,R> {
-	CodeEnumJavaTypeDescriptor<O> getJavaDescriptor();
+	@Override
+	CodeEnumJavaType<O> getDomainJavaType();
+
 	int getJdbcTypeCode();
 
-	O readValue(ResultSet resultSet, String name, SharedSessionContractImplementor session) throws SQLException;
-	void writeValue(PreparedStatement statement, O value, int position, SharedSessionContractImplementor session) throws SQLException;
-
 	String toSqlLiteral(Object value);
+
+	/**
+	 * @since 6.0
+	 *
+	 * @deprecated Added temporarily in support of dual SQL execution until
+	 * fully migrated to {@link SelectStatement} and {@link JdbcOperation}
+	 */
+	@Remove
+	@Deprecated
+	void writeValue(
+			PreparedStatement statement,
+			O value,
+			int position,
+			SharedSessionContractImplementor session) throws SQLException;
 }

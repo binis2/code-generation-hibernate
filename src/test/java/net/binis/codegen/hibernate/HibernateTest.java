@@ -24,20 +24,20 @@ import net.binis.codegen.generation.core.Helpers;
 import net.binis.codegen.objects.Pair;
 import net.binis.codegen.test.BaseTest;
 import org.apache.commons.lang3.tuple.Triple;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import java.util.List;
 
-public class HibernateTest extends BaseTest {
+class HibernateTest extends BaseTest {
 
-    @Before
+    @BeforeEach
     public void cleanUp() {
         Helpers.cleanUp();
     }
 
     @Test
-    public void enrichHibernate() {
+    void enrichHibernate() {
         testMultiPass(List.of(
                 Pair.of(List.of(Triple.of("enrich/enrichHibernateEnum.java", "enrich/enrichHibernateEnum-0.java", "enrich/enrichHibernateEnum-1.java")), 1),
                 Pair.of(List.of(Triple.of("enrich/enrichHibernate.java", "enrich/enrichHibernate-0.java", "enrich/enrichHibernate-1.java")), 2)));

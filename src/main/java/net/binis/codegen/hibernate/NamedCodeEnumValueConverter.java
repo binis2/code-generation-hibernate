@@ -20,86 +20,97 @@ package net.binis.codegen.hibernate;
  * #L%
  */
 
-import net.binis.codegen.objects.base.enumeration.CodeEnum;
-import org.hibernate.engine.spi.SharedSessionContractImplementor;
-import org.hibernate.type.descriptor.ValueBinder;
-import org.hibernate.type.descriptor.ValueExtractor;
-import org.hibernate.type.descriptor.java.StringTypeDescriptor;
-import org.hibernate.type.descriptor.sql.VarcharTypeDescriptor;
-
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.Serializable;
 import java.sql.PreparedStatement;
-import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Types;
 import java.util.Locale;
 
+import net.binis.codegen.objects.base.enumeration.CodeEnum;
+import org.hibernate.engine.spi.SharedSessionContractImplementor;
+import org.hibernate.metamodel.model.convert.spi.EnumValueConverter;
+import org.hibernate.type.descriptor.ValueBinder;
+import org.hibernate.type.descriptor.ValueExtractor;
+import org.hibernate.type.descriptor.java.EnumJavaType;
+import org.hibernate.type.descriptor.java.JavaType;
+import org.hibernate.type.descriptor.jdbc.JdbcType;
+
+/**
+ * BasicValueConverter handling the conversion of an enum based on
+ * JPA {@link jakarta.persistence.EnumType#STRING} strategy (storing the name)
+ *
+ * @author Steve Ebersole
+ */
 public class NamedCodeEnumValueConverter<E extends CodeEnum> implements CodeEnumValueConverter<E,String>, Serializable {
+	private final CodeEnumJavaType<E> domainTypeDescriptor;
+	private final JdbcType jdbcType;
+	private final JavaType<String> relationalTypeDescriptor;
 
-	private final CodeEnumJavaTypeDescriptor<E> enumJavaDescriptor;
-
-	private transient ValueExtractor<E> valueExtractor;
-
+	private transient ValueExtractor<String> valueExtractor;
 	private transient ValueBinder<String> valueBinder;
 
-	public NamedCodeEnumValueConverter(CodeEnumJavaTypeDescriptor<E> enumJavaDescriptor) {
-		this.enumJavaDescriptor = enumJavaDescriptor;
-		this.valueExtractor = createValueExtractor( enumJavaDescriptor );
-		this.valueBinder = createValueBinder();
+	public NamedCodeEnumValueConverter(
+			CodeEnumJavaType<E> domainTypeDescriptor,
+			JdbcType jdbcType,
+			JavaType<String> relationalTypeDescriptor) {
+		this.domainTypeDescriptor = domainTypeDescriptor;
+		this.jdbcType = jdbcType;
+		this.relationalTypeDescriptor = relationalTypeDescriptor;
+
+		this.valueExtractor = jdbcType.getExtractor( relationalTypeDescriptor );
+		this.valueBinder = jdbcType.getBinder( relationalTypeDescriptor );
+	}
+
+	@Override
+	public CodeEnumJavaType<E> getDomainJavaType() {
+		return domainTypeDescriptor;
+	}
+
+	@Override
+	public JavaType<String> getRelationalJavaType() {
+		return relationalTypeDescriptor;
 	}
 
 	@Override
 	public E toDomainValue(String relationalForm) {
-		return enumJavaDescriptor.fromName( relationalForm );
+		return domainTypeDescriptor.fromName( relationalForm );
 	}
 
 	@Override
 	public String toRelationalValue(E domainForm) {
-		return enumJavaDescriptor.toName( domainForm );
+		return domainTypeDescriptor.toName( domainForm );
 	}
 
 	@Override
 	public int getJdbcTypeCode() {
-		return Types.VARCHAR;
+		return jdbcType.getJdbcTypeCode();
+	}
+
+	public int getDefaultSqlTypeCode() {
+		return jdbcType.getDefaultSqlTypeCode();
 	}
 
 	@Override
-	public CodeEnumJavaTypeDescriptor<E> getJavaDescriptor() {
-		return enumJavaDescriptor;
-	}
-
-	@Override
-	public E readValue(ResultSet resultSet, String name, SharedSessionContractImplementor session) throws SQLException {
-		return valueExtractor.extract( resultSet, name, session );
-	}
-
-	@Override
-	public void writeValue(PreparedStatement statement, E value, int position, SharedSessionContractImplementor session) throws SQLException {
-		final String jdbcValue = value == null ? null : toRelationalValue( value );
-
-		valueBinder.bind( statement, jdbcValue, position, session );
-	}
-
-	@Override
-	@SuppressWarnings("unchecked")
 	public String toSqlLiteral(Object value) {
-		return String.format( Locale.ROOT, "'%s'", ( (E) value ).name() );
-	}
-
-	private static <T extends CodeEnum> ValueExtractor<T> createValueExtractor(CodeEnumJavaTypeDescriptor<T> enumJavaDescriptor) {
-		return VarcharTypeDescriptor.INSTANCE.getExtractor( enumJavaDescriptor );
-	}
-
-	private static ValueBinder<String> createValueBinder() {
-		return VarcharTypeDescriptor.INSTANCE.getBinder( StringTypeDescriptor.INSTANCE );
+		//noinspection rawtypes
+		return String.format( Locale.ROOT, "'%s'", ( (Enum) value ).name() );
 	}
 
 	private void readObject(ObjectInputStream stream) throws ClassNotFoundException, IOException {
 		stream.defaultReadObject();
 
-		this.valueExtractor = createValueExtractor( enumJavaDescriptor );
-		this.valueBinder = createValueBinder();
+		this.valueExtractor = jdbcType.getExtractor( relationalTypeDescriptor );
+		this.valueBinder = jdbcType.getBinder( relationalTypeDescriptor );
+	}
+
+	@Override
+	public void writeValue(
+			PreparedStatement statement,
+			E value,
+			int position,
+			SharedSessionContractImplementor session) throws SQLException {
+		final String jdbcValue = value == null ? null : value.name();
+		valueBinder.bind( statement, jdbcValue, position, session );
 	}
 }
