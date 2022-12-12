@@ -15,9 +15,9 @@ package net.binis.codegen.hibernate;
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * 
+ *
  *      http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -39,6 +39,9 @@ import org.hibernate.type.descriptor.jdbc.JdbcTypeIndicators;
 import org.hibernate.type.descriptor.jdbc.spi.JdbcTypeRegistry;
 
 import java.sql.Types;
+import java.util.UUID;
+
+import static java.util.Objects.isNull;
 
 public class CodeEnumJavaType<T extends CodeEnum> extends AbstractClassJavaType<T> {
     public CodeEnumJavaType(Class<T> type) {
@@ -59,7 +62,7 @@ public class CodeEnumJavaType<T extends CodeEnum> extends AbstractClassJavaType<
                     ? registry.getDescriptor(Types.NVARCHAR)
                     : registry.getDescriptor(Types.VARCHAR);
         } else {
-            return registry.getDescriptor(SqlTypes.SMALLINT);
+            return registry.getDescriptor(SqlTypes.INTEGER);
         }
     }
 
@@ -164,7 +167,7 @@ public class CodeEnumJavaType<T extends CodeEnum> extends AbstractClassJavaType<
         if (relationalForm == null) {
             return null;
         }
-        return getJavaTypeClass().getEnumConstants()[relationalForm];
+        return CodeFactory.enumValuesMap(getJavaTypeClass()).get(relationalForm.intValue());
     }
 
     /**
@@ -174,7 +177,7 @@ public class CodeEnumJavaType<T extends CodeEnum> extends AbstractClassJavaType<
         if (relationalForm == null) {
             return null;
         }
-        return getJavaTypeClass().getEnumConstants()[relationalForm];
+        return CodeFactory.enumValuesMap(getJavaTypeClass()).get(relationalForm.intValue());
     }
 
     /**
@@ -184,7 +187,14 @@ public class CodeEnumJavaType<T extends CodeEnum> extends AbstractClassJavaType<
         if (relationalForm == null) {
             return null;
         }
-        return getJavaTypeClass().getEnumConstants()[relationalForm];
+
+        var result = CodeFactory.enumValueOf(getJavaType(), relationalForm);
+
+        if (isNull(result)) {
+            result = CodeFactory.initializeUnknownEnumValue(getJavaType(), UUID.randomUUID().toString(), relationalForm);
+        }
+
+        return result;
     }
 
     /**
@@ -194,7 +204,7 @@ public class CodeEnumJavaType<T extends CodeEnum> extends AbstractClassJavaType<
         if (relationalForm == null) {
             return null;
         }
-        return getJavaTypeClass().getEnumConstants()[relationalForm.intValue()];
+        return CodeFactory.enumValuesMap(getJavaTypeClass()).get(relationalForm.intValue());
     }
 
     /**
@@ -221,7 +231,13 @@ public class CodeEnumJavaType<T extends CodeEnum> extends AbstractClassJavaType<
         if (relationalForm == null) {
             return null;
         }
-        return CodeFactory.enumValueOf(getJavaTypeClass(), relationalForm.trim());
+        var result = CodeFactory.enumValueOf(getJavaType(), relationalForm);
+
+        if (isNull(result)) {
+            result = CodeFactory.initializeUnknownEnumValue(getJavaType(), relationalForm, Integer.MIN_VALUE);
+        }
+
+        return result;
     }
 
     @Override
