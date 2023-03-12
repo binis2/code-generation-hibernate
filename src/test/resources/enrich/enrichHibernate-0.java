@@ -4,7 +4,7 @@ package net.binis.codegen;
 import org.hibernate.annotations.Type;
 import javax.annotation.processing.Generated;
 
-@Generated(value = "TestPrototype", comments = "Test")
+@Generated(value = "net.binis.codegen.TestPrototype", comments = "Test")
 public class TestImpl implements Test {
 
     @Type(net.binis.codegen.hibernate.CodeEnumType.class)
