@@ -31,17 +31,11 @@ import java.util.List;
 
 class HibernateTest extends BaseCodeGenTest {
 
-    @BeforeEach
-    public void cleanUp() {
-        Helpers.cleanUp();
-    }
-
     @Test
     void enrichHibernate() {
         testMultiPass(List.of(
                 Pair.of(List.of(Triple.of("enrich/enrichHibernateEnum.java", "enrich/enrichHibernateEnum-0.java", "enrich/enrichHibernateEnum-1.java")), 1),
                 Pair.of(List.of(Triple.of("enrich/enrichHibernate.java", "enrich/enrichHibernate-0.java", "enrich/enrichHibernate-1.java")), 2)));
     }
-
 
 }
