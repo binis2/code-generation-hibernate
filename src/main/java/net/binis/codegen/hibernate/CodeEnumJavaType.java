@@ -240,9 +240,4 @@ public class CodeEnumJavaType<T extends CodeEnum> extends AbstractClassJavaType<
         return result;
     }
 
-    @Override
-    public String getCheckCondition(String columnName, JdbcType jdbcType, Dialect dialect) {
-        return null;
-    }
-
 }

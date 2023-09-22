@@ -21,21 +21,14 @@ package net.binis.codegen.hibernate;
  */
 
 import net.binis.codegen.objects.base.enumeration.CodeEnum;
-import org.hibernate.engine.spi.SharedSessionContractImplementor;
-import org.hibernate.metamodel.model.convert.spi.BasicValueConverter;
-
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-
-import java.sql.PreparedStatement;
-import java.sql.SQLException;
-
 import org.hibernate.Remove;
 import org.hibernate.engine.spi.SharedSessionContractImplementor;
 import org.hibernate.sql.ast.tree.select.SelectStatement;
 import org.hibernate.sql.exec.spi.JdbcOperation;
-import org.hibernate.type.descriptor.java.EnumJavaType;
+import org.hibernate.type.descriptor.converter.spi.BasicValueConverter;
+
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
 
 /**
  * BasicValueConverter extension for enum-specific support

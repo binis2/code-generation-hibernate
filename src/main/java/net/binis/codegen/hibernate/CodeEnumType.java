@@ -33,15 +33,18 @@ import net.binis.codegen.objects.base.enumeration.CodeEnum;
 import org.hibernate.AssertionFailure;
 import org.hibernate.HibernateException;
 import org.hibernate.annotations.Nationalized;
+import org.hibernate.dialect.Dialect;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.engine.spi.SharedSessionContractImplementor;
 import org.hibernate.internal.util.ReflectHelper;
 import org.hibernate.internal.util.config.ConfigurationHelper;
-import org.hibernate.metamodel.model.convert.internal.OrdinalEnumValueConverter;
-import org.hibernate.metamodel.model.convert.spi.BasicValueConverter;
+import org.hibernate.type.EnumType;
+import org.hibernate.type.descriptor.converter.internal.OrdinalEnumValueConverter;
+import org.hibernate.type.descriptor.converter.spi.BasicValueConverter;
 import org.hibernate.type.descriptor.ValueBinder;
 import org.hibernate.type.descriptor.ValueExtractor;
 import org.hibernate.type.descriptor.java.BasicJavaType;
+import org.hibernate.type.descriptor.java.JavaType;
 import org.hibernate.type.descriptor.jdbc.JdbcType;
 import org.hibernate.type.descriptor.jdbc.JdbcTypeIndicators;
 import org.hibernate.type.spi.TypeConfiguration;
@@ -153,7 +156,7 @@ public class CodeEnumType
                     reader
             );
 
-            final BasicJavaType<?> relationalJavaType = resolveRelationalJavaType(
+            var relationalJavaType = resolveRelationalJavaType(
                     indicators,
                     enumJavaType
             );
@@ -194,7 +197,7 @@ public class CodeEnumType
         );
     }
 
-    private BasicJavaType<?> resolveRelationalJavaType(
+    private JavaType<? extends Number> resolveRelationalJavaType(
             LocalJdbcTypeIndicators indicators,
             CodeEnumJavaType<?> enumJavaType) {
         return enumJavaType.getRecommendedJdbcType(indicators).getJdbcRecommendedJavaTypeMapping(
@@ -459,6 +462,11 @@ public class CodeEnumType
         @Override
         public TypeConfiguration getTypeConfiguration() {
             return typeConfiguration;
+        }
+
+        @Override
+        public Dialect getDialect() {
+            return CodeEnumType.this.typeConfiguration.getCurrentBaseSqlTypeIndicators().getDialect();
         }
 
         @Override
