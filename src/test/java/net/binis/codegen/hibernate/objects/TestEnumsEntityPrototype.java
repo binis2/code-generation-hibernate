@@ -20,15 +20,12 @@ package net.binis.codegen.hibernate.objects;
  * #L%
  */
 
-import jakarta.persistence.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.Id;
 import net.binis.codegen.enrich.HibernateEnricher;
-import net.binis.codegen.hibernate.CodeEnumCollectionType;
-import net.binis.codegen.hibernate.CodeEnumType;
 import net.binis.codegen.spring.annotation.builder.CodeQueryBuilder;
-import org.hibernate.annotations.CollectionType;
-import org.hibernate.annotations.ListIndexJavaType;
-import org.hibernate.annotations.ListIndexJdbcType;
-import org.hibernate.annotations.Type;
 
 import java.util.List;
 import java.util.UUID;
