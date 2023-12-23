@@ -94,6 +94,17 @@ public class HibernateIntegrationTest {
         assertTrue(load.getTestMixList().contains(TestMixEnum.FOUR));
     }
 
+    @Test
+    void testCollections() {
+        TestEnums.create()
+                .testList(List.of(TestEnum.TWO, TestEnum.THREE))
+                .save();
+
+        var load = TestEnums.find().by().testList().containsOne(List.of(TestEnum.TWO)).get().orElse(null);
+
+        assertNotNull(load);
+    }
+
 
 
     static class Initializer
