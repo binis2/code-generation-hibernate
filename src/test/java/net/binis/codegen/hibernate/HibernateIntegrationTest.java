@@ -25,10 +25,11 @@ import com.github.dockerjava.api.model.HostConfig;
 import com.github.dockerjava.api.model.PortBinding;
 import com.github.dockerjava.api.model.Ports;
 import lombok.extern.slf4j.Slf4j;
-import net.binis.codegen.hibernate.objects.ActualEnum;
 import net.binis.codegen.hibernate.objects.TestEnum;
 import net.binis.codegen.hibernate.objects.TestEnums;
 import net.binis.codegen.hibernate.objects.TestMixEnum;
+import net.binis.codegen.map.Mapper;
+import net.binis.codegen.spring.mapping.keys.MappingKeys;
 import org.junit.ClassRule;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Test;
@@ -105,6 +106,18 @@ public class HibernateIntegrationTest {
         assertNotNull(load);
     }
 
+    @Test
+    void testSerialization() {
+        var obj = TestEnums.create()
+                .done();
+
+        var json = Mapper.convert(obj, String.class, MappingKeys.JSON);
+        assertEquals("{\"id\":null,\"testEnum\":null,\"testList\":null,\"testMixEnum\":null,\"testMixList\":null}", json);
+
+        var xml = Mapper.convert(obj, String.class, MappingKeys.XML);
+        assertEquals("<TestEnumsEntity><id/><testEnum/><testMixEnum/></TestEnumsEntity>", xml);
+
+    }
 
 
     static class Initializer
