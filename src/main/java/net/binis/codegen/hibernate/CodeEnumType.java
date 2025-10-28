@@ -252,7 +252,6 @@ public class CodeEnumType implements EnhancedUserType<CodeEnum>, DynamicParamete
     }
 
     @Override
-    @SuppressWarnings("unchecked")
     public String toLoggableString(Object value, SessionFactoryImplementor factory) {
         verifyConfigured();
         return enumJavaType.toString((CodeEnum) value);

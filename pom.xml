@@ -71,6 +71,11 @@
         </dependency>
         <dependency>
             <groupId>dev.binis</groupId>
+            <artifactId>code-generator-annotation</artifactId>
+            <version>${deb.binis}</version>
+        </dependency>
+        <dependency>
+            <groupId>dev.binis</groupId>
             <artifactId>code-generation-test</artifactId>
             <version>${deb.binis}</version>
             <scope>test</scope>
@@ -84,12 +89,6 @@
         <dependency>
             <groupId>dev.binis</groupId>
             <artifactId>code-generator-spring-configuration</artifactId>
-            <version>${deb.binis}</version>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>dev.binis</groupId>
-            <artifactId>code-generator-annotation</artifactId>
             <version>${deb.binis}</version>
             <scope>test</scope>
         </dependency>

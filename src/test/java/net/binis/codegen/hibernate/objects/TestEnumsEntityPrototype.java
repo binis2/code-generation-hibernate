@@ -20,10 +20,7 @@ package net.binis.codegen.hibernate.objects;
  * #L%
  */
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.Id;
+import jakarta.persistence.*;
 import net.binis.codegen.enrich.HibernateEnricher;
 import net.binis.codegen.spring.annotation.builder.CodeQueryBuilder;
 
@@ -39,6 +36,7 @@ public interface TestEnumsEntityPrototype {
     @Column(name = "id", nullable = false, updatable = false)
     UUID id();
 
+    @Enumerated(EnumType.STRING)
     TestEnumPrototype testEnum();
 
     TestMixEnumPrototype testMixEnum();

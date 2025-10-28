@@ -24,8 +24,12 @@ import com.github.dockerjava.api.model.ExposedPort;
 import com.github.dockerjava.api.model.HostConfig;
 import com.github.dockerjava.api.model.PortBinding;
 import com.github.dockerjava.api.model.Ports;
+import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
+import net.binis.codegen.annotation.CodePrototype;
+import net.binis.codegen.annotation.builder.CodeBuilder;
 import net.binis.codegen.hibernate.objects.TestEnum;
+import net.binis.codegen.hibernate.objects.TestEnumPrototype;
 import net.binis.codegen.hibernate.objects.TestEnums;
 import net.binis.codegen.hibernate.objects.TestMixEnum;
 import net.binis.codegen.map.Mapper;
@@ -43,6 +47,7 @@ import org.springframework.test.context.ContextConfiguration;
 import org.testcontainers.containers.PostgreSQLContainer;
 
 import java.util.List;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -119,6 +124,59 @@ public class HibernateIntegrationTest {
 
     }
 
+    @Test
+    void testQueries() {
+        var obj = TestEnums.create()
+                .testEnum(TestEnum.ONE)
+                .testMixEnum(TestMixEnum.FOUR)
+                .testList(List.of(TestEnum.TWO))
+                .testMixList(List.of(TestMixEnum.FOUR)).save();
+
+        var refs = TestEnums.find().by().references();
+        assertEquals(UUID.class, refs.get(0).getId().getClass());
+
+        var ref = TestEnums.find().by().id(obj.getId()).reference();
+        assertEquals(UUID.class, ref.get().getId().getClass());
+        var ids = TestEnums.find().select().id().tuples(UUID.class);
+        assertEquals(UUID.class, ids.get(0).getClass());
+
+        var plain = TestEnums.find().select().id().tuples(TestMapDestinationPlain.class);
+        assertEquals(obj.getId(), plain.get(0).getId());
+
+        var modif = TestEnums.find().select().id().testEnum().tuples(TestMapDestinationImpl.class);
+        assertEquals(obj.getId(), modif.get(0).getId());
+        assertEquals(TestEnum.ONE, modif.get(0).getTestEnum());
+    }
+
+    @Test
+    void testEnumAsString() {
+        var obj = TestEnums.create()
+                .testEnum(TestEnum.ONE)
+                .testMixEnum(TestMixEnum.FOUR)
+                .testList(List.of(TestEnum.TWO))
+                .testMixList(List.of(TestMixEnum.FOUR)).save();
+
+        var value = TestEnums.find().nativeQuery("select testEnum from testenumsentity where id = ?1").param(obj.getId()).tuple().get().get(0);
+        assertEquals(String.class, value.getClass());
+
+    }
+
+    @Data
+    public static class TestMapDestinationPlain {
+
+        private UUID id;
+
+    }
+
+    @CodePrototype(base = true)
+    public interface TestMapBaseDestinationPrototype {
+        UUID id();
+    }
+
+    @CodeBuilder
+    public interface TestMapDestinationPrototype extends TestMapBaseDestinationPrototype{
+        TestEnumPrototype testEnum();
+    }
 
     static class Initializer
             implements ApplicationContextInitializer<ConfigurableApplicationContext> {
