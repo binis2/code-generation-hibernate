@@ -22,7 +22,9 @@ package net.binis.codegen.hibernate.objects;
 
 import jakarta.persistence.*;
 import net.binis.codegen.enrich.HibernateEnricher;
+import net.binis.codegen.hibernate.CodeEnumType;
 import net.binis.codegen.spring.annotation.builder.CodeQueryBuilder;
+import org.hibernate.annotations.Type;
 
 import java.util.List;
 import java.util.UUID;
@@ -39,6 +41,8 @@ public interface TestEnumsEntityPrototype {
     @Enumerated(EnumType.STRING)
     TestEnumPrototype testEnum();
 
+    @Enumerated(EnumType.STRING)
+    @Type(CodeEnumType.class)
     TestMixEnumPrototype testMixEnum();
 
     List<TestEnumPrototype> testList();

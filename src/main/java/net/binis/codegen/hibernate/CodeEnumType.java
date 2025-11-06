@@ -60,6 +60,7 @@ public class CodeEnumType implements EnhancedUserType<CodeEnum>, DynamicParamete
     public static final String TYPE = "type";
 
     private Class enumClass;
+    private boolean useString;
 
     private JdbcType jdbcType;
     private CodeEnumJavaType<CodeEnum> enumJavaType;
@@ -102,6 +103,7 @@ public class CodeEnumType implements EnhancedUserType<CodeEnum>, DynamicParamete
             final LocalJdbcTypeIndicators indicators;
             final Long columnLength = reader == null ? null : reader.getColumnLengths()[0];
             if (parameters.containsKey(NAMED)) {
+                useString = true;
                 indicators = new LocalJdbcTypeIndicators(
                         getBoolean(NAMED, parameters) ? STRING : ORDINAL,
                         false,
@@ -139,7 +141,7 @@ public class CodeEnumType implements EnhancedUserType<CodeEnum>, DynamicParamete
                 return enumAnn.value();
             }
         }
-        return ORDINAL;
+        return useString ? STRING : ORDINAL;
     }
 
     private boolean isNationalized(ParameterType reader) {
