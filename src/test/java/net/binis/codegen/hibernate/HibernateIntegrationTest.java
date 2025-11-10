@@ -117,10 +117,10 @@ public class HibernateIntegrationTest {
                 .done();
 
         var json = Mapper.convert(obj, String.class, MappingKeys.JSON);
-        assertEquals("{\"id\":null,\"testEnum\":null,\"testList\":null,\"testMixEnum\":null,\"testMixList\":null}", json);
+        assertEquals("{\"id\":null,\"testEnum\":null,\"testEnumNumber\":null,\"testList\":null,\"testMixEnum\":null,\"testMixList\":null}", json);
 
         var xml = Mapper.convert(obj, String.class, MappingKeys.XML);
-        assertEquals("<TestEnumsEntity><id/><testEnum/><testMixEnum/></TestEnumsEntity>", xml);
+        assertEquals("<TestEnumsEntity><id/><testEnum/><testEnumNumber/><testMixEnum/></TestEnumsEntity>", xml);
 
     }
 
@@ -152,12 +152,15 @@ public class HibernateIntegrationTest {
     void testEnumAsString() {
         var obj = TestEnums.create()
                 .testEnum(TestEnum.ONE)
+                .testEnumNumber(TestEnum.TWO)
                 .testMixEnum(TestMixEnum.FOUR)
                 .testList(List.of(TestEnum.TWO))
                 .testMixList(List.of(TestMixEnum.FOUR)).save();
 
-        var value = TestEnums.find().nativeQuery("select testEnum from testenumsentity where id = ?1").param(obj.getId()).tuple().get().get(0);
-        assertEquals(String.class, value.getClass());
+        var values = TestEnums.find().nativeQuery("select testEnum, testMixEnum, testEnumNumber from testenumsentity where id = ?1").param(obj.getId()).tuple().get();
+        assertEquals(String.class, values.get(0).getClass());
+        assertEquals(String.class, values.get(1).getClass());
+        assertEquals(Integer.class, values.get(2).getClass());
 
     }
 

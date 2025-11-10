@@ -24,6 +24,7 @@ import jakarta.persistence.*;
 import net.binis.codegen.enrich.HibernateEnricher;
 import net.binis.codegen.hibernate.CodeEnumType;
 import net.binis.codegen.spring.annotation.builder.CodeQueryBuilder;
+import org.hibernate.annotations.Parameter;
 import org.hibernate.annotations.Type;
 
 import java.util.List;
@@ -41,8 +42,9 @@ public interface TestEnumsEntityPrototype {
     @Enumerated(EnumType.STRING)
     TestEnumPrototype testEnum();
 
-    @Enumerated(EnumType.STRING)
-    @Type(CodeEnumType.class)
+    TestEnumPrototype testEnumNumber();
+
+    @Type(value = CodeEnumType.class, parameters = @Parameter(name = "useNamed", value = "true"))
     TestMixEnumPrototype testMixEnum();
 
     List<TestEnumPrototype> testList();
