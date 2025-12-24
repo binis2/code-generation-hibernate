@@ -31,7 +31,6 @@ import org.hibernate.dialect.Dialect;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.engine.spi.SharedSessionContractImplementor;
 import org.hibernate.internal.util.ReflectHelper;
-import org.hibernate.type.descriptor.java.JavaType;
 import org.hibernate.type.descriptor.jdbc.JdbcType;
 import org.hibernate.type.descriptor.jdbc.JdbcTypeIndicators;
 import org.hibernate.type.spi.TypeConfiguration;
@@ -74,14 +73,10 @@ public class CodeEnumType implements EnhancedUserType<CodeEnum>, DynamicParamete
         return enumClass;
     }
 
-    @Override
-    public JdbcType getJdbcType(TypeConfiguration typeConfiguration) {
-        return jdbcType;
-    }
-
+    @SuppressWarnings("deprecation")
     @Override
     public void setParameterValues(Properties parameters) {
-        final ParameterType reader = (ParameterType) parameters.get(PARAMETER_TYPE);
+        final DynamicParameterizedType.ParameterType reader = (DynamicParameterizedType.ParameterType) parameters.get(PARAMETER_TYPE);
 
         if (parameters.containsKey(ENUM)) {
             final String enumClassName = (String) parameters.get(ENUM);
@@ -128,7 +123,7 @@ public class CodeEnumType implements EnhancedUserType<CodeEnum>, DynamicParamete
         }
     }
 
-    private jakarta.persistence.EnumType getEnumType(ParameterType reader) {
+    private jakarta.persistence.EnumType getEnumType(DynamicParameterizedType.ParameterType reader) {
         if (reader != null) {
             if (reader.isPrimaryKey()) {
                 final MapKeyEnumerated enumAnn = getAnnotation(reader.getAnnotationsMethod(), MapKeyEnumerated.class);
@@ -144,7 +139,7 @@ public class CodeEnumType implements EnhancedUserType<CodeEnum>, DynamicParamete
         return useString ? STRING : ORDINAL;
     }
 
-    private boolean isNationalized(ParameterType reader) {
+    private boolean isNationalized(DynamicParameterizedType.ParameterType reader) {
         return typeConfiguration.getCurrentBaseSqlTypeIndicators().isNationalized()
                 || reader != null && getAnnotation(reader.getAnnotationsMethod(), Nationalized.class) != null;
     }

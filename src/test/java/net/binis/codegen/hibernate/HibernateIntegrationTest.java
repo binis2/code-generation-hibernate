@@ -37,9 +37,9 @@ import net.binis.codegen.spring.mapping.keys.MappingKeys;
 import org.junit.ClassRule;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
-import org.springframework.boot.test.autoconfigure.orm.jpa.AutoConfigureDataJpa;
-import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.boot.data.jpa.test.autoconfigure.AutoConfigureDataJpa;
+import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
+import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase;
 import org.springframework.boot.test.util.TestPropertyValues;
 import org.springframework.context.ApplicationContextInitializer;
 import org.springframework.context.ConfigurableApplicationContext;
@@ -160,7 +160,7 @@ public class HibernateIntegrationTest {
         var values = TestEnums.find().nativeQuery("select testEnum, testMixEnum, testEnumNumber from testenumsentity where id = ?1").param(obj.getId()).tuple().get();
         assertEquals(String.class, values.get(0).getClass());
         assertEquals(String.class, values.get(1).getClass());
-        assertEquals(Integer.class, values.get(2).getClass());
+        assertEquals(Short.class, values.get(2).getClass());
 
     }
 
@@ -170,6 +170,18 @@ public class HibernateIntegrationTest {
         private UUID id;
 
     }
+
+    @Test
+    void testTuples() {
+        TestEnums.create()
+                .testList(List.of(TestEnum.TWO, TestEnum.THREE))
+                .save();
+
+        var load = TestEnums.find().select().id().list();
+
+        assertEquals(1, load.size());
+    }
+
 
     @CodePrototype(base = true)
     public interface TestMapBaseDestinationPrototype {
