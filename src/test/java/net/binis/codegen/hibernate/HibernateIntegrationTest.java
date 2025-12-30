@@ -33,7 +33,7 @@ import net.binis.codegen.hibernate.objects.TestEnumPrototype;
 import net.binis.codegen.hibernate.objects.TestEnums;
 import net.binis.codegen.hibernate.objects.TestMixEnum;
 import net.binis.codegen.map.Mapper;
-import net.binis.codegen.spring.mapping.keys.MappingKeys;
+import net.binis.codegen.jackson.mapping.keys.MappingKeys;
 import org.junit.ClassRule;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Test;
@@ -62,7 +62,7 @@ public class HibernateIntegrationTest {
     public static PostgreSQLContainer<?> postgreSQLContainer = prepareDatabase();
 
     public static PostgreSQLContainer<?> prepareDatabase(){
-        var result = new PostgreSQLContainer<>("postgres:16.1")
+        var result = new PostgreSQLContainer<>("postgres:17")
                 .withDatabaseName("integration-tests-db")
                 .withUsername("sa")
                 .withPassword("sa")

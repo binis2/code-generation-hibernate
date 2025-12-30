@@ -73,6 +73,7 @@
             <groupId>dev.binis</groupId>
             <artifactId>code-generator-annotation</artifactId>
             <version>${deb.binis}</version>
+            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>dev.binis</groupId>
@@ -201,6 +202,7 @@
                     <configuration>
                         <compilerArgs>
                             <arg>-Xlint:unchecked</arg>
+                            <arg>-proc:full</arg>
                         </compilerArgs>
                     </configuration>
                 </plugin>
