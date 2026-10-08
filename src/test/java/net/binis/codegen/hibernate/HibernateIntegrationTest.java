@@ -34,7 +34,6 @@ import net.binis.codegen.hibernate.objects.TestEnums;
 import net.binis.codegen.hibernate.objects.TestMixEnum;
 import net.binis.codegen.map.Mapper;
 import net.binis.codegen.jackson.mapping.keys.MappingKeys;
-import org.junit.ClassRule;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.data.jpa.test.autoconfigure.AutoConfigureDataJpa;
@@ -44,7 +43,7 @@ import org.springframework.boot.test.util.TestPropertyValues;
 import org.springframework.context.ApplicationContextInitializer;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.test.context.ContextConfiguration;
-import org.testcontainers.containers.PostgreSQLContainer;
+import org.testcontainers.postgresql.PostgreSQLContainer;
 
 import java.util.List;
 import java.util.UUID;
@@ -58,11 +57,10 @@ import static org.junit.jupiter.api.Assertions.*;
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 public class HibernateIntegrationTest {
 
-    @ClassRule
-    public static PostgreSQLContainer<?> postgreSQLContainer = prepareDatabase();
+    public static PostgreSQLContainer postgreSQLContainer = prepareDatabase();
 
-    public static PostgreSQLContainer<?> prepareDatabase(){
-        var result = new PostgreSQLContainer<>("postgres:17")
+    public static PostgreSQLContainer prepareDatabase(){
+        var result = new PostgreSQLContainer("postgres:17")
                 .withDatabaseName("integration-tests-db")
                 .withUsername("sa")
                 .withPassword("sa")
